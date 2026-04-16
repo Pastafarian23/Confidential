@@ -24,6 +24,20 @@
 - **Reason:** Nameserver update in progress (24-48 hours)
 - **Target:** Once DNS propagates, should point to jobs-sativa.cfdtunnel.com
 
+### 💬 Telegram
+- **Ops Channel:** -5283458613 ✅ (bidirectional)
+
+### 🤖 AI Team
+- **Head:** confidential-head
+- **Marketing:** confidential-marketing
+- **Sales:** confidential-sales
+- **Research:** confidential-research
+- **SocialMedia:** confidential-socialmedia
+- **Content:** confidential-content
+- **Brainstormer:** confidential-brainstormer
+- **Support:** confidential-support
+- **Automation:** confidential-automation
+
 ---
 
 ## Session Notes (2026-04-16)
