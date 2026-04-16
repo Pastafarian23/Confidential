@@ -1,5 +1,5 @@
 const { v4: uuidv4 } = require('uuid');
-const db = require('./database');
+const { db } = require('./database');
 const https = require('https');
 
 const MARKETPLACE_URL = process.env.MARKETPLACE_URL || 'http://localhost:3001';
@@ -12,11 +12,11 @@ const CAPABILITIES = ['web_search', 'data_lookup', 'writing', 'research', 'codin
 
 async function registerWorker() {
   try {
-    const stmt = db.prepare(`
-      INSERT OR REPLACE INTO agents (id, name, type, capabilities, balance)
-      VALUES (?, ?, 'ai', ?, 0)
-    `);
-    stmt.run(WORKER_ID, WORKER_NAME, JSON.stringify(CAPABILITIES));
+    await db.query(
+      `INSERT INTO agents (id, name, type, capabilities, balance) VALUES ($1, $2, 'ai', $3, 0)
+       ON CONFLICT (id) DO UPDATE SET name = $2, capabilities = $3`,
+      [WORKER_ID, WORKER_NAME, JSON.stringify(CAPABILITIES)]
+    );
     console.log(`✅ Worker registered: ${WORKER_NAME} (${WORKER_ID})`);
   } catch (err) {
     console.error('Failed to register worker:', err.message);
@@ -90,11 +90,9 @@ async function executeTask(task) {
 
 async function doWebSearch(query) {
   try {
-    // Use DuckDuckGo HTML scrape (free, no API key)
     const encodedQuery = encodeURIComponent(query);
     const html = await fetchContent(`https://html.duckduckgo.com/html/?q=${encodedQuery}`);
     
-    // Extract snippets from results
     const snippets = [];
     const regex = /<a class="result__snippet"[^>]*>([\s\S]*?)<\/a>/g;
     let match;
@@ -114,11 +112,9 @@ async function doWebSearch(query) {
 
 async function doResearch(title, description) {
   try {
-    // Search for the topic
     const encodedQuery = encodeURIComponent(title);
     const html = await fetchContent(`https://html.duckduckgo.com/html/?q=${encodedQuery}`);
     
-    // Extract result titles
     const results = [];
     const regex = /<a class="result__a"[^>]*>([\s\S]*?)<\/a>/g;
     let match;
@@ -141,27 +137,13 @@ async function doResearch(title, description) {
 }
 
 async function doWriting(title, description) {
-  // For writing, we provide a structured output
   return `📝 Content: ${title}\n\n${description}\n\n---\n\n[AI-generated content would be inserted here. For production, integrate with GPT/Claude API.]`;
 }
 
 async function doDataLookup(description) {
-  try {
-    // Try to extract location from description
-    const locationMatch = description.match(/(\d+\s+\w+\s+(St|Street|Ave|Avenue|Rd|Road|Blvd|Boulevard))/i);
-    const cityMatch = description.match(/in\s+([A-Za-z\s]+),?\s*([A-Z]{2})?/i);
-    
-    let info = `Data lookup for: ${description}\n\n`;
-    
-    if (locationMatch || cityMatch) {
-      info += `Location detected. For production, connect to property APIs (Zillow, Assessor databases, etc.)\n`;
-    }
-    
-    info += `[Would connect to Kevlar Data scraper for property lookups]`;
-    return info;
-  } catch (err) {
-    return `Data lookup completed for: ${description}`;
-  }
+  let info = `Data lookup for: ${description}\n\n`;
+  info += `[Would connect to Kevlar Data scraper for property lookups]`;
+  return info;
 }
 
 async function doCoding(description) {
@@ -185,10 +167,7 @@ async function main() {
   console.log(`Capabilities: ${CAPABILITIES.join(', ')}`);
   console.log(`Polling every ${POLL_INTERVAL/1000}s`);
   
-  // Initial poll
   await pollForTasks();
-  
-  // Continue polling
   setInterval(pollForTasks, POLL_INTERVAL);
 }
 
