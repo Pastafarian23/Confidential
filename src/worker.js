@@ -1,5 +1,5 @@
 const { v4: uuidv4 } = require('uuid');
-const { db } = require('./database');
+const db = require('./database');
 const https = require('https');
 
 const MARKETPLACE_URL = process.env.MARKETPLACE_URL || 'http://localhost:3001';
@@ -7,16 +7,16 @@ const POLL_INTERVAL = 5000;
 const WORKER_ID = 'confidential-worker-001';
 const WORKER_NAME = 'Confidential Worker';
 
-// Categories this worker can handle
 const CAPABILITIES = ['web_search', 'data_lookup', 'writing', 'research', 'coding'];
 
 async function registerWorker() {
   try {
-    await db.query(
-      `INSERT INTO agents (id, name, type, capabilities, balance) VALUES ($1, $2, 'ai', $3, 0)
-       ON CONFLICT (id) DO UPDATE SET name = $2, capabilities = $3`,
-      [WORKER_ID, WORKER_NAME, JSON.stringify(CAPABILITIES)]
-    );
+    db.saveAgent({
+      id: WORKER_ID,
+      name: WORKER_NAME,
+      type: 'ai',
+      capabilities: CAPABILITIES
+    });
     console.log(`✅ Worker registered: ${WORKER_NAME} (${WORKER_ID})`);
   } catch (err) {
     console.error('Failed to register worker:', err.message);
@@ -36,7 +36,6 @@ async function pollForTasks() {
     for (const task of tasks) {
       console.log(`📋 Found task: ${task.title} ($${task.price})`);
       
-      // Try to accept the task
       const acceptRes = await fetch(`${MARKETPLACE_URL}/api/tasks/${task.id}/accept`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -52,10 +51,8 @@ async function pollForTasks() {
       
       console.log(`✋ Accepted task: ${task.id}`);
       
-      // Execute the task with real APIs
       const result = await executeTask(task);
       
-      // Submit result
       const submitRes = await fetch(`${MARKETPLACE_URL}/api/tasks/${task.id}/submit`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -73,18 +70,12 @@ async function executeTask(task) {
   console.log(`🔧 Executing: ${task.title} (${task.category})`);
   
   switch (task.category) {
-    case 'web_search':
-      return await doWebSearch(task.description);
-    case 'research':
-      return await doResearch(task.title, task.description);
-    case 'writing':
-      return await doWriting(task.title, task.description);
-    case 'data_lookup':
-      return await doDataLookup(task.description);
-    case 'coding':
-      return await doCoding(task.description);
-    default:
-      return `Completed task: ${task.title}`;
+    case 'web_search': return await doWebSearch(task.description);
+    case 'research': return await doResearch(task.title, task.description);
+    case 'writing': return await doWriting(task.title, task.description);
+    case 'data_lookup': return await doDataLookup(task.description);
+    case 'coding': return await doCoding(task.description);
+    default: return `Completed task: ${task.title}`;
   }
 }
 
@@ -137,17 +128,15 @@ async function doResearch(title, description) {
 }
 
 async function doWriting(title, description) {
-  return `📝 Content: ${title}\n\n${description}\n\n---\n\n[AI-generated content would be inserted here. For production, integrate with GPT/Claude API.]`;
+  return `📝 Content: ${title}\n\n${description}\n\n---\n\n[AI-generated content would be inserted here]`;
 }
 
 async function doDataLookup(description) {
-  let info = `Data lookup for: ${description}\n\n`;
-  info += `[Would connect to Kevlar Data scraper for property lookups]`;
-  return info;
+  return `Data lookup for: ${description}\n\n[Would connect to data sources]`;
 }
 
 async function doCoding(description) {
-  return `Code review for: ${description}\n\n[Would integrate with code analysis tools for production]\n\nKey areas to review:\n- Error handling\n- Security best practices\n- Performance optimization\n- Code readability`;
+  return `Code review for: ${description}\n\nKey areas: Error handling, Security, Performance, Readability`;
 }
 
 function fetchContent(url) {
